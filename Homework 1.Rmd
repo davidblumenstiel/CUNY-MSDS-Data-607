@@ -1,0 +1,36 @@
+---
+title: "Data 607 Homework 1"
+author: "David Blumenstiel"
+date: "1/29/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+>"Here’s What Your Part Of America Eats On Thanksgiving" 
+https://fivethirtyeight.com/features/heres-what-your-part-of-america-eats-on-thanksgiving/
+
+*This article details the results of a survey about what we do and eat for Thanksgiving.  The article discusses what types of side dishes are served in different parts of the country, and what people do after.  Here we will ask: what types of main dishes are eaten, and how far do people travel?*
+
+
+```{r}
+path <- 'https://raw.githubusercontent.com/fivethirtyeight/data/master/thanksgiving-2015/thanksgiving-2015-poll-data.csv'
+df <- read.csv('https://raw.githubusercontent.com/fivethirtyeight/data/master/thanksgiving-2015/thanksgiving-2015-poll-data.csv')
+
+#The main dataset includes many questions from the survey
+#A subset will be created including only those who celebrate thanksgiving, concerning for the main dish and for how far traveled
+
+thanksgave <- subset(df, Do.you.celebrate.Thanksgiving. == "Yes")
+
+sublist <- c("What.is.typically.the.main.dish.at.your.Thanksgiving.dinner.","How.far.will.you.travel.for.Thanksgiving.")
+
+thanksgiving <- thanksgave[sublist]
+
+head(thanksgiving)
+summary(thanksgiving)
+
+```
+>Conclusions
+
+*As one might expect, while there are several types of main dish, the most common one tends to be turkey by far.  Also, people tend to stay close to home. The analysis in the article could be further expanded on by considering other variables (what types of stuffing, type of pie served, etc).  This dataset has 65 variables; quite a bit of information, from which cross comparisons could also be made.*
