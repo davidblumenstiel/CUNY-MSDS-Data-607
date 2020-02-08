@@ -1,0 +1,39 @@
+---
+title: "Data 607 Homework 2"
+author: "David Blumenstiel"
+date: "2/6/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, tidy = TRUE)
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+# Load an SQL database into R
+The data was entered manually into an Excel spreadsheet (my favorite way to enter data by hand).  The spreadsheet was then saved as a .csv file, and then loaded into an SQL database via the MySQL Workbench data import wizard.  In the interest of easy reproducability, an SQL Table and data generation script was then created using data export.  Database credentials were stored in a seperate R script, with a local address; this only works on my machine (security).
+
+
+```{r}
+#Using the RMariaDB library, we can import directly into R, given access credentials.
+library(RMariaDB)
+
+#References a local file which stores the database credentials
+source('C:\\Users\\blume\\Desktop\\CUNY MSDS\\Data 607 Data Qcquisition and Management\\SQL\\credentials.R', local = TRUE)
+
+#Here the connection to the SQL database is opened using credentials provided from a seperate script
+con <- dbConnect(RMariaDB::MariaDB(), user=username, password=Password, dbname='movieratings', host='localhost')
+
+#Here the table of interest from the SQL database is read from the MariaDB connection into an R database, afterwhich the connection is closed
+MovieReviews <- dbReadTable(con,"movieratings")
+dbDisconnect(con)
+
+MovieReviews
+```
+
+# Standardized Ratings
+Even if ratings are standardized from 1 at worst to 5 at best, individuals may have tendancies to rate high or low.  Thus, if the objective is to determine the quality of a movie in respect to other movies, base ratings may not apply well across different indivudials.  To correct for this, an individual's ratings could be adjusted in accordance to their "average" view towards movies, which would help standardize across individuals.  E.g., have an average movie rating of 2, and rates one movie as 4, then that movie is 2X better than other movies on average.  This means that the typical movie for all indivudlas will have a rating of 1, while ratings below are worse and ratings above are high.  This standardization would make generalizations about movie quality more relevant on the whole.
