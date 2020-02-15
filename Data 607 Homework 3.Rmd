@@ -1,0 +1,152 @@
+---
+title: "Data 607 Homework 3"
+author: "David Blumenstiel"
+date: "2/12/2020"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1: Using the 173 majors listed in fivethirtyeight.com’s College Majors dataset [https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/], provide code that identifies the majors that contain either "DATA" or "STATISTICS"
+
+
+```{r}
+#Loads and subsets the dataset
+address <- "https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv"
+df<- read.csv(address)
+majors <- df$Major
+head(majors)
+```
+
+
+
+```{r}
+#Creats seperate lists of majors containing "Data", and "Statistics"
+Data <- list()
+Stats <- list()
+for (i in majors) {
+  if (grepl("data", i, ignore.case = TRUE, fixed = FALSE)) {
+    Data <- c(Data, i)
+    
+  } else if (grepl("statistics", i, ignore.case = TRUE, fixed = FALSE)) {
+    Stats <- c(Stats, i)
+    
+  }
+}
+Data
+Stats
+
+```
+## 2 Write code that transforms the data below:
+*I've made the assumption that the 'data' below is supposed to be one interpreted as one big text string, to be copy-paste directly.*
+```{r}
+#Loads it as-is into a string
+
+fruits <- '[1] "bell pepper" "bilberry"   "blackberry"  "blood orange"
+[5] "blueberry"  "cantaloupe"  "chili pepper" "cloudberry"  
+[9] "elderberry"  "lime"     "lychee"    "mulberry"   
+[13] "olive"    "salal berry"'
+```
+###  Into a format like this: c("bell pepper", "bilberry", "blackberry", "blood orange", "blueberry", "cantaloupe", "chili pepper", "cloudberry", "elderberry", "lime", "lychee", "mulberry", "olive", "salal berry") 
+
+
+```{r}
+#Iterates over the 'list' of fruits and appends each fruit to a vector
+
+#Initializes an empty vector fruits, and splits the long 'fruits' sections around " "s
+
+fruitvec <- vector()
+fruitsplit <- strsplit(fruits,"\"")[[1]]
+
+#Removes other junk, which (helpfully) happens to occur every other line
+#Puts the final vector into fruitvec
+fruitvec <- fruitsplit[c(FALSE,TRUE)]
+
+fruitvec
+
+
+```
+
+## 3: Describe, in words, what these expressions will match:
+
+*I'm going to preface this by explaining my interperetation of this problem.  When actually using these exprssions (at least within str_view), you need to put them in quotes to work; some of them alerady have quotes.  I interpert the ones that alerady have quotes as wishing to determine matches containing quotes.  E.g., (.)//1 will return 'aa', while "(.)//1" will return '"aa"'.*
+
+```{r}
+#Test setup
+library(stringr)
+test <- list('"123ar3aa321" word','"123321"','"aaa"', "bbb", '"4554"',"dfg", 'q24asf3"abara"32s4',"222", "asdadwdee", "a", "cc", "aseep\1\1dcaaw", "blahee\1blah")
+```
+
+
+(.)\1\1
+*This will match a character followed by \1\1.*
+```{r}
+str_view(test, '(.)\1\1', match = TRUE)
+```
+
+
+"(.)(.)\\2\\1"
+*This will match a 4 character pallandrome with quotes, i.e. ", 1, 2, 2, 1, " ("abba", "2332", etc).*
+```{r}
+str_view(test, '"(.)(.)\\2\\1"', match = TRUE)
+```
+
+
+(..)\1
+*This will match 2 characters followed by a \1.  The characters can be the same or different.*
+```{r}
+str_view(test, '(..)\1', match = TRUE)
+```
+
+
+
+"(.).\\1.\\1"
+*This will match a quote followed by a sequence of 5 characters where the first, third, and fifth are the same character, followed by another quote.*  
+```{r}
+str_view(test, '"(.).\\1.\\1"', match = TRUE)
+```
+
+
+
+"(.)(.)(.).*\\3\\2\\1"
+*This will match a sequence at least 6 characters long with ends of a length at least 3 long that are pallandomic of eachother.  I.e., the six characters (or more depending on the middle of the sequence) that together make up the ends of the sequence are pallandromic.  Excluding the 6 characters that make up the ends, there can be any number of other characters in the middle which also have the possibility of being pallandromic (but not nessicarily).  All of this is within quotes.*
+```{r}
+str_view(test, '"(.)(.)(.).*\\3\\2\\1"', match = TRUE)
+```
+
+
+
+## 4 Construct regular expressions to match words that:
+
+*I interperet 'words' as character sequences seperated from eachother by spaces, and letters to exclue other characters.*
+*Sidenote: I'm having a difficult time putting the answers in the header as they are in the code, so please look to the code for my answers.*
+
+```{r}
+library(stringr)
+test2 <- list("The eleven churches were built in 1451", "asjnvoa", "rerepeatedre", "weidepid")
+```
+
+
+Start and end with the same character.
+```{r}
+str_view(test2, "\\b(\\S)\\S*\\1\\b", match = TRUE)
+```
+Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
+
+*Assuming 'twice' means at least twice*
+```{r}
+str_view(test2, "\\b\\S*([a-zA-Z])([a-zA-Z])\\S*\\1\\2\\S*\\b", match = TRUE)
+```
+
+
+Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+```{r}
+str_view(test2, "\\b\\S*([a-zA-Z])\\S*\\1\\S*\\1\\S*\\b", match = TRUE)
+```
+
+
