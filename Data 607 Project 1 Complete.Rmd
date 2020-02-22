@@ -1,0 +1,136 @@
+---
+title: "Data 607 Project 1"
+author: "David Blumenstiel"
+date: "2/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## In this project, you’re given a text file with chess tournament results where the information has some structure. Your job is to create an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database) with the following information for all of the players:
+### Player’s Name, Player’s State, Total Number of Points, Player’s Pre-Rating, and Average Pre Chess Rating of Opponents
+### For the first player, the information would be:
+### Gary Hua, ON, 6.0, 1794, 1605
+
+
+
+
+
+
+
+### Importing the text file from GitHub
+```{r}
+#I posted the data to GitHub; this loads it (without spaces or the first row of dots)
+df <- read.csv("https://raw.githubusercontent.com/davidblumenstiel/data/master/tournamentinfo.txt", header = F, skip = 1, strip.white = T)
+head(df)
+
+```
+
+### Removing the junk we don't need and concatenating every other row
+```{r}
+#Removing the dotted lines (which occur every third line)
+df1 <- data.frame(df[-seq(0,nrow(df),3), ], "")
+
+
+
+#Concatenating every other row
+df2 <- data.frame(cbind(df1[ (seq(nrow(df1)) %% 2)==1,], df1[ (seq(nrow(df1)) %% 2)==0,]))
+df2$X...1 <- df2$X.. <- NULL
+df2 <- df2$all <- paste(df2$df..seq.0..nrow.df...3...., df2$df..seq.0..nrow.df...3.....1)
+
+
+#Delimiting by '|' into the data frame: players
+players <- data.frame(do.call('rbind', strsplit(as.character(df2),'|',fixed=TRUE)))
+
+
+head(players)
+```
+
+### Subsetting the data and renaming the columns
+```{r}
+#Getting rid of columns we aren't interested in
+players <- players[ ,-c(13:20)]
+
+#Renaming the columns and getting rid of the first row
+colnames(players) <- c("Player_ID","Player_Name", "Total_Score",  "Round_1_Opponent","Round_2_Opponent","Round_3_Opponent","Round_4_Opponent","Round_5_Opponent","Round_6_Opponent","Round_7_Opponent","State","PreRating")
+players <- players[-1,]
+head(players)
+```
+
+### Changing opponent columns to opponent IDs
+```{r}
+#Removes the Win/Loss info and coerces remainder to an int
+players$Round_1_Opponent <- as.integer(gsub(". ","",players$Round_1_Opponent))
+players$Round_2_Opponent <- as.integer(gsub(". ","",players$Round_2_Opponent))
+players$Round_3_Opponent <- as.integer(gsub(". ","",players$Round_3_Opponent))
+players$Round_4_Opponent <- as.integer(gsub(". ","",players$Round_4_Opponent))
+players$Round_5_Opponent <- as.integer(gsub(". ","",players$Round_5_Opponent))
+players$Round_6_Opponent <- as.integer(gsub(". ","",players$Round_6_Opponent))
+players$Round_7_Opponent <- as.integer(gsub(". ","",players$Round_7_Opponent))
+head(players)
+```
+
+
+### Extracting the Pre-Ratings from the 'PreRating' column, and changing the data type to numeric
+```{r}
+library(stringr)
+#Filtering out everything but the pre-rating in it's respective column
+players$PreRating <- gsub(" ","",players$PreRating)
+players$PreRating <- gsub("-.*","",players$PreRating)
+players$PreRating <- gsub(".*:","",players$PreRating)
+players$PreRating <- gsub("P.*","",players$PreRating)
+
+#Changing the type to numeric
+players$PreRating <- as.numeric(players$PreRating)
+
+head(players)
+```
+
+### Making a new column of average opponents' pre-ratings (Mean_Opponent_PreRatings)
+```{r}
+library(gbutils)
+#Changing Player_ID to integer
+players$Player_ID <- as.integer(as.character(players$Player_ID))
+
+#Initializing an empty column
+players$Mean_Opponent_PreRatings <- NA
+
+#Loops through the dataset, calculate's average pre-ratings for all players except the one in question, and appends it to the new column
+for (i in 1:nrow(players)) {
+  #Initializes an empty vector
+  opts = c()
+  #Loops through columns within a player's row to build a vector of their opponent's mean ratings
+  for (k in c(4:10)) {
+    if (isNA(players[i,k])== FALSE) {
+      opts = c(opts, players$PreRating[players$Player_ID==players[i,k]])
+    }
+  }
+  #Appends the mean of a player's opponent's pre-ratings to the respective column
+  players[i,"Mean_Opponent_PreRatings"] <- round(mean(opts), digits = 0)
+
+}
+
+head(players)
+```
+
+### Cleaning up: removing the opponent columns and rearranging
+```{r}
+#Removing unnecessary columns
+players[,c(1,4:10)] <- NULL
+
+#Reordering columns
+players <- players[,c(1,3,2,4,5)]
+
+row.names(players) <- NULL
+head(players)
+```
+
+### Writing to a csv
+```{r}
+#Creates a csv file with the desired info in the workfolder
+write.csv(players, file = "Chess_Tournament_Player_Info.csv")
+```
+
+
+
