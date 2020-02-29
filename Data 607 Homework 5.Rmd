@@ -1,0 +1,76 @@
+---
+title: "Data 607 Homework 5"
+author: "David Blumenstiel"
+date: "2/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Tidying Data
+Here, we will take some messy data and tidy it
+
+#### Importing the untidy data
+```{r}
+#Imports the csv (which I put on github)
+dirty <- read.csv('https://raw.githubusercontent.com/davidblumenstiel/data/master/Flight.csv')
+dirty
+```
+
+#### Cleaning up
+```{r}
+#Removing blank rows
+df <- na.omit(dirty)
+df
+#Adding column names
+
+names(df)[1:2] <- c("Airline", "Status")
+
+#Appending missing values in "Airline"
+#This is a little overkill, but would work if the dataset were larger
+j = 0
+for (i in df$Airline) {
+  j = j + 1
+  if (i != "") {
+    x = i
+  }
+  else {
+    df$Airline[j] <- x
+  }
+}
+df
+#Tidying up the destinations
+clean <- gather(df,"Destination","Number Flights",3:7)
+head(clean)
+```
+
+#### Comparing arrivals:
+
+##### What proportion of flights were on time/delayed for each destination across each airline?
+```{r}
+#Creates a vector of the total number of flights per airline and destination
+totals <- rep(clean$`Number Flights`[clean$Status == "on time"] + clean$`Number Flights`[clean$Status == "delayed"], each = 2)
+
+#Initiates new column (Proportion Ontime/Delayed)
+clean["Proportion Ontime/Delayed"] <- NA
+
+#Fills the new column
+clean$`Proportion Ontime/Delayed` <- clean$`Number Flights`/totals
+head(clean)
+```
+
+
+##### A little visualization
+
+```{r}
+delayed <- filter(clean,Status == "delayed")
+
+ggplot(delayed, aes(Airline, `Proportion Ontime/Delayed`)) + geom_boxplot()
+```
+
+Although there isn't too much data to work with, it appears that the 'AMWEST' airline had a higher proportion of delayed flights than did the 'ALASKA' airline.
