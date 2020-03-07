@@ -1,0 +1,246 @@
+---
+title: "Data 607 Project 2"
+author: "David Blumenstiel"
+date: "3/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+# Choose 3 wide data sets, tidy, and analyze
+
+
+## Dataset #1: Agricultural Land Values
+### This dataset contains the values of agricultural land from 2015-2019 across different states and regions
+
+
+#### Importing from csv and basic cleaning
+```{r}
+#Importing
+agland <- read.csv("https://raw.githubusercontent.com/davidblumenstiel/data/master/Agricultural%20Land%20Values.csv")
+head(agland)
+#Renaming columns
+names(agland)[1:7] <- c("Region/State","2015","2016","2017","2018","2019","%Change2018-2019")
+
+#Getting rid of blank rows
+agland <- na.omit(agland)
+
+#Reformatting columns to their appropriate types
+#Need to remove the '.....'s from Column 1
+agland[,1] <- gsub("\\.*:","",as.character(agland[,1]))
+
+#Changing the value by year columns to numeric; also removing the  ','s
+agland[,2] <- as.numeric(gsub(",","",as.character(agland[,2])))
+agland[,3] <- as.numeric(gsub(",","",as.character(agland[,3])))
+agland[,4] <- as.numeric(gsub(",","",as.character(agland[,4])))
+agland[,5] <- as.numeric(gsub(",","",as.character(agland[,5])))
+agland[,6] <- as.numeric(gsub(",","",as.character(agland[,6])))
+head(agland)
+```
+The year columns would make an easy target for tidying.
+
+
+#### Tidying
+##### Making columns for the dates and the land values
+```{r}
+agland <- gather(agland,"Year","Value",2:6)
+head(agland)
+```
+
+
+#### Perform the requested analysis
+##### No analysis was requested, so instead we will find the median land value per state across all 5 years
+
+```{r}
+#Easy to do with dplyr
+medAgland <- agland %>%
+  group_by(`Region/State`) %>%
+  summarize(Median_Value = median(Value))
+
+head(medAgland)
+
+
+#Now what we have the median values, we can use ggplot2 to make a nice plot
+ggplot(medAgland, aes(x = reorder(`Region/State`,Median_Value), y = Median_Value, fill = `Region/State`)) +
+  coord_flip() +
+  geom_col() +
+  ggtitle("Median Land Value Across All Years")+
+  xlab("Median Value") +
+  ylab("State/Region") +
+  theme(legend.position = "none")
+ 
+
+```
+
+Rhode Island has the highest median land value ($14900), and North Dakota has the lowest (1740)
+
+
+
+
+
+
+##### How do the land values change over the years
+```{r}
+#Good time to use box plots
+ggplot(agland,aes(x = Year, y = Value, fill = Year)) +
+  geom_boxplot() +
+  scale_fill_brewer(palette=1)+ 
+  ggtitle("Land Value by Year")
+  
+```
+
+Each of the years are pretty similar in terms of land value, with a slight increase per year.  One interesting observation is that the IQR is tightening as time goes on.
+
+
+
+## Dataset #2: Student Performance
+### This is a dataset containing student test scores on two different tests, across two different years
+### Disclaimer: I did not make the csv for this; it was alerady on github
+
+
+#### Importing the dataset
+```{r}
+#Importing
+stuper <- read.csv("https://gist.githubusercontent.com/Kimmirikwa/b69d0ea134820ea52f8481991ffae93e/raw/4db7b1698035ee29885d10e1a59bd902716ae168/student_results.csv")
+stuper
+
+
+```
+This dataset arrives much cleaner than the last one, however the term columns could be combined, and the sex and age column can be seperated into 2
+
+
+#### Spliting and tidying columns
+```{r}
+#Spliting the sex.and.age column with dplyr: separate
+stuper <- stuper %>%
+  separate(sex.and.age,c("sex","age"),"_")
+stuper
+
+#Combining the term columns with tidyr: gather
+stuper <- gather(stuper,"term","score",7:9)
+head(stuper)
+
+```
+
+#### Analysis
+##### Determining student performance changes during later terms
+```{r}
+#Can make a new output dataframe for clarification:
+#One row per student per test
+stuimp <- data.frame(matrix(data = NA,nrow = 10,ncol=3))
+names(stuimp) <- c("Student","Test Number","Ratio of Improvment Between Terms 1 and 3")
+#Takes student names from the tidy dataset
+stuimp$Student <- as.character(stuper$name[1:10])
+
+#Makes a vector of the percent change ia student's score for test 1, and appends it to it's new column int he output dataframe
+testImprove <- (stuper$score[stuper$term == "term.3" & stuper$test.number == "test 1"] -
+  stuper$score[stuper$term == "term.1" & stuper$test.number == "test 1"]) / 
+  stuper$score[stuper$term == "term.3" & stuper$test.number == "test 1"]
+  
+#Does the same thing for test 2 and adds it to the vector above
+testImprove <- c(testImprove,(stuper$score[stuper$term == "term.3" & stuper$test.number == "test 2"] -
+  stuper$score[stuper$term == "term.1" & stuper$test.number == "test 2"]) / 
+  stuper$score[stuper$term == "term.3" & stuper$test.number == "test 2"])
+
+#Appends testImprove to the output dataframe
+stuimp$`Ratio of Improvment Between Terms 1 and 3` <- testImprove
+
+#Adds the test number
+stuimp$`Test Number` <- c(rep(1,5),rep(2,5))
+
+stuimp
+```
+The output is a small, tidy table of only the student changes in performance
+
+##### We can also plot the performance changes by student for each test
+```{r}
+#Lets also determine the median performance change for all students on each test
+medperform1 <- median(stuimp$`Ratio of Improvment Between Terms 1 and 3`[stuimp$`Test Number` == 1])
+medperform2 <- median(stuimp$`Ratio of Improvment Between Terms 1 and 3`[stuimp$`Test Number` == 2])
+
+#Test 1
+barplot(100 * c(stuimp$`Ratio of Improvment Between Terms 1 and 3`[stuimp$`Test Number` == 1], medperform1),names =
+          c(stuimp$Student[stuimp$`Test Number` == 1],"Median"),xlab = "Student", ylab = "% Performance Change",main = "Test 1 Improvements",col=rgb(0.5,0.2,0.1,0.9))
+
+#Test 2
+barplot(100 * c(stuimp$`Ratio of Improvment Between Terms 1 and 3`[stuimp$`Test Number` == 2], medperform2),names =
+          c(stuimp$Student[stuimp$`Test Number` == 2],"Median"),xlab = "Student", ylab = "% Performance Change",main = "Test 2 Improvements",col=rgb(0.1,0.0,0.6,0.2))
+
+```
+
+Overall, students' median performance increased on both tests, but more on test 2.  Linda and mary were the only ones who performed signifcantly worse on the later tests (1 and 2 respectively).
+
+
+
+## Dataset #3: Bob Ross
+### This is a dataset of Bob Ross TV Episodes, the painting in the episode, and all the features in the painting
+### Disclaimer: I did not make the csv for this; I did upload it to github however
+
+
+#### Importing the dataset
+```{r}
+bobross <-read.csv("https://raw.githubusercontent.com/davidblumenstiel/data/master/bobross.csv")
+head(bobross)
+```
+This has way to many columns; luckily they all have the same kind of observations, and would be easy to tidy.
+
+#### Combining all the 'features' into one column
+```{r}
+#Going to use pivot_gather here; pretty much the same thing
+
+bobross <- bobross %>%
+  pivot_longer(-c("EPISODE","TITLE"), names_to = "Feature", values_to = "Included")
+
+head(bobross)
+```
+Much easier to read now, although our 400 observations have turned into 27000.
+
+
+#### Now that it's easy to use our super tidy (but long) database for analysis
+
+
+##### What are the most used features
+```{r fig.height=20}
+#Credit where credit is due: Leo Yi assisted greatly with this chunk
+group_by(bobross,Feature) %>%
+  summarize(Occurances = sum(Included)) %>%
+  ggplot(aes(x = Feature, y = Occurances, fill = Feature)) +
+  geom_col() +
+  theme_linedraw() +
+  theme(legend.position = "none",axis.text=element_text(size=10),
+        axis.title=element_text(size=20))  +
+  coord_flip() +
+  
+  ggtitle("Number of Features Uses Across All Episodes")+
+  theme(plot.title = element_text(size=15)) 
+ 
+  
+
+```
+
+It appears that tree(s) are the most common features in his paintings, followed by clouds if one discounts the seperate types of trees.
+
+
+##### What episodes include fire, and what are their features?
+```{r fig.height=10}
+fire <- bobross %>%
+  filter(Feature == 'FIRE') %>%
+  filter(Included == 1)
+
+fire[,1:2]
+
+```
+##### It turns out only the epsidoe S03E10, "CAMPFIRE" includes fire, but what other features does it have?
+```{r}
+bobross %>%
+  filter(EPISODE == "S03E10") %>%
+  filter(Included == 1)
+```
+We can probably say that the painting in this episode includes a person outdoors by the fire with a lake nearby, likely in some wooded setting.
+
