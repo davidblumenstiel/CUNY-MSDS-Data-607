@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+  <row>
+    <Title>The_Elements:_A_Visual_Exploration_of_Every_Known_Atom_in_the_Universe</Title>
+    <Authors>Theodore_Gray,_Nick_Mann</Authors>
+    <Amazon_Price>15.99</Amazon_Price>
+    <Date_Published>4/3/2012</Date_Published>
+  </row>
+  <row>
+    <Title>Superheavy:_Making_and_Breaking_the_Periodic_Table</Title>
+    <Authors>Kit_Chapman</Authors>
+    <Amazon_Price>11.99</Amazon_Price>
+    <Date_Published>6/13/2019</Date_Published>
+  </row>
+  <row>
+    <Title>Oxygen:_The_Molecule_that_Made_the_World</Title>
+    <Authors>Nick_Lane</Authors>
+    <Amazon_Price>12.62</Amazon_Price>
+    <Date_Published>7/1/2016</Date_Published>
+  </row>
+</root>
