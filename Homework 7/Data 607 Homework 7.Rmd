@@ -1,0 +1,55 @@
+---
+title: "Data 607 Homework 7"
+author: "David Blumenstiel"
+date: "3/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment – Working with XML and JSON in R
+
+##### Pick three of your favorite books on one of your favorite subjects. At least one of the books should have more than one author. For each book, include the title, authors, and two or three other attributes that you find interesting. Take the information that you’ve selected about these three books, and separately create three files which store the book’s information in HTML (using an html table), XML, and JSON formats (e.g. “books.html”, “books.xml”, and “books.json”). To help you better understand the different file structures, I’d prefer that you create each of these files “by hand” unless you’re already very comfortable with the file formats. Write R code, using your packages of choice, to load the information from each of the three sources into separate R data frames. Are the three data frames identical? Your deliverable is the three source files and the R code. If you can, package your assignment solution up into an .Rmd file and publish to rpubs.com. [This will also require finding a way to make your three text files accessible from the web].
+
+### Loading an csv file
+Regular csv for comparison
+```{r}
+dfcsv <- read.csv("https://raw.githubusercontent.com/davidblumenstiel/CUNY-MSDS-Data-607/master/Homework%207/books.csv", stringsAsFactors = FALSE)
+dfcsv
+```
+
+
+### Loading an xml file
+This uses the library RCurl to retreive the URL, and the library XML for an easy to-dataframe function
+```{r}
+library("RCurl")
+library("XML")
+
+xmlurl <-getURL("https://raw.githubusercontent.com/davidblumenstiel/CUNY-MSDS-Data-607/master/Homework%207/books.xml")
+dfxml <- xmlToDataFrame(xmlurl)
+dfxml
+```
+
+
+### Loading an html file
+Needed a few libraies to read this into a dataframe simply.  It comes out as a list of two, so only the first element (the data) is read into the dataframe
+```{r}
+library("textreadr")
+library("rvest")
+library("xml2")
+dfhtml<-read_html('https://raw.githubusercontent.com/davidblumenstiel/CUNY-MSDS-Data-607/master/Homework%207/books.htm')
+dfhtml<-html_table(dfhtml, dec = ".")[[1]]
+dfhtml
+```
+
+### Loading an json file
+Used the jsonlite library for an easy import.  Origionally, the file read as a long vector, but 'simplifyVector' reduced it
+```{r}
+library(jsonlite)
+dfjson <- read_json("https://raw.githubusercontent.com/davidblumenstiel/CUNY-MSDS-Data-607/master/Homework%207/books.json", simplifyVector = TRUE)
+dfjson
+```
+
+All of these are pretty much identical.  The only difference I can spot is that the data types in the xml file all came across as factors
