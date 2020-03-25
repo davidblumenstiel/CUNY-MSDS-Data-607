@@ -1,0 +1,55 @@
+---
+title: "Data 607 Homework 9"
+author: "David Blumenstiel"
+date: "3/23/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# Assignment – Web APIs
+
+### The New York Times web site provides a rich set of APIs, as described here: https://developer.nytimes.com/apis
+
+### You’ll need to start by signing up for an API key.
+
+### Your task is to choose one of the New York Times APIs, construct an interface in R to read in the JSON data, and transform it into an R DataFrame.
+
+
+
+
+
+#### To actually load this in from a JSON file, we just need one library: jsonlite
+
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library(jsonlite)
+```
+
+
+
+#### The api I chose was their user comment api.  This will give us data pertaining to user comments on an article.  There are some limitations: We are only allowed to access data from 25 comments per request, max 10 requests per minute, and max 4000 requests per day.  Thus, if we wanted to continually harvest data, we would need to pause 6 seconds between request, and could only harvest for 400 mins a day.  
+
+#### Below is the code that will return the data from one request (25 comments).  The function 'fromJSON' will read a url and return the data it finds.  The NYT url we can feed it has a few variables in it, such as our api key, an offset, and the article url.  The article url is used to specify from which article we want to retreive contents.  The offset is used to designate which comments we want; i.e. offset = 0 will return the first 25 comments, offset 25 will return comments 26-50, and so on.  There are lines below where we can designate the key, offset, and article which we want to use.  
+
+```{r Load_API}
+#The API key
+key <- "HQAkLpV2K1ddJm8g1Qzfuj9Nk8vIgSKg"
+
+#The offset
+offset <- 0
+
+#url of the article we want
+articleUrl <- "https://www.nytimes.com/2019/06/21/science/giant-squid-cephalopod-video.html"
+
+#Takes the url from the desired article (their default in this case) and adds in the API key
+url <- URLencode(paste0("https://api.nytimes.com/svc/community/v3/user-content/url.json?api-key=",key,"&offset=",offset,"&url=",articleUrl))
+
+#Reads the complete url into a dataframe using the jsonlite library function below
+#It returns not just the dataframe, but a list of objects pretaining to it, so I've selected the element that is the dataframe we're interested in ( [[4]][[3]] )
+df <- fromJSON(url)[[4]][[3]] 
+
+#There was alot of data; below is just a sample of some of the variables
+head(df[c(1,4,5,11,12)])
+```
+
