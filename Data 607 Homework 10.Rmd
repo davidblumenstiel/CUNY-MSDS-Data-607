@@ -1,0 +1,469 @@
+---
+title: "Data 607 Homework 10"
+author: "David Blumenstiel"
+date: "3/30/2020"
+output: html_document
+---
+# The Assignment:
+
+## In Text Mining with R, Chapter 2 looks at Sentiment Analysis.  In this assignment, you should start by getting the primary example code from chapter 2 working in an R Markdown document.  You should provide a citation to this base code.  You’re then asked to extend the code in two ways:
+
+### Work with a different corpus of your choosing, and
+
+### Incorporate at least one additional sentiment lexicon (possibly from another R package that you’ve found through research).
+
+
+
+# Setup
+```{r setup}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidytext)
+library(tidyr)
+library(dplyr)
+library(janeaustenr)
+library(stringr)
+library(ggplot2)
+library(wordcloud)
+library(reshape2)
+```
+
+# Setting up the example code from 'Text Mining with R' Chapter 2.
+### This was copied directly from:
+### "2 Sentiment Analysis with Tidy Data.” Text Mining with R: a Tidy Approach, by Julia Silge and David Robinson, O'Reilly Media, 2017.
+### https://www.tidytextmining.com/sentiment.html
+### I did however load the libraries in the setup chunk, and limit the output to the heads of the tables
+## 2.1
+```{r}
+
+get_sentiments("afinn")
+
+get_sentiments("bing")
+
+get_sentiments("nrc")
+
+```
+
+## 2.2
+```{r}
+
+
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                                                 ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+tidy_books %>%
+  filter(book == "Emma") %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE) %>%
+  head()
+
+jane_austen_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+
+
+ggplot(jane_austen_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+## 2.3 
+```{r}
+pride_prejudice <- tidy_books %>% 
+  filter(book == "Pride & Prejudice")
+
+pride_prejudice%>%
+  head()
+
+afinn <- pride_prejudice %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = linenumber %/% 80) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(pride_prejudice %>% 
+                            inner_join(get_sentiments("bing")) %>%
+                            mutate(method = "Bing et al."),
+                          pride_prejudice %>% 
+                            inner_join(get_sentiments("nrc") %>% 
+                                         filter(sentiment %in% c("positive", 
+                                                                 "negative"))) %>%
+                            mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+get_sentiments("nrc") %>% 
+     filter(sentiment %in% c("positive", 
+                             "negative")) %>% 
+  count(sentiment)
+
+get_sentiments("bing") %>% 
+  count(sentiment)
+```
+
+
+## 2.4
+```{r}
+bing_word_counts <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+
+custom_stop_words <- bind_rows(tibble(word = c("miss"), 
+                                          lexicon = c("custom")), 
+                               stop_words)
+
+custom_stop_words
+```
+
+## 2.5 
+```{r}
+
+tidy_books %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+
+tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+## 2.6
+```{r}
+PandP_sentences <- tibble(text = prideprejudice) %>% 
+  unnest_tokens(sentence, text, token = "sentences")
+PandP_sentences$sentence[2]
+
+austen_chapters <- austen_books() %>%
+  group_by(book) %>%
+  unnest_tokens(chapter, text, token = "regex", 
+                pattern = "Chapter|CHAPTER [\\dIVXLC]") %>%
+  ungroup()
+
+austen_chapters %>% 
+  group_by(book) %>% 
+  summarise(chapters = n())
+
+bingnegative <- get_sentiments("bing") %>% 
+  filter(sentiment == "negative")
+
+wordcounts <- tidy_books %>%
+  group_by(book, chapter) %>%
+  summarize(words = n())
+
+tidy_books %>%
+  semi_join(bingnegative) %>%
+  group_by(book, chapter) %>%
+  summarize(negativewords = n()) %>%
+  left_join(wordcounts, by = c("book", "chapter")) %>%
+  mutate(ratio = negativewords/words) %>%
+  filter(chapter != 0) %>%
+  top_n(1) %>%
+  ungroup()
+```
+
+# My Extension
+### Below is my analysis of dialogue between characters in movies, with the same analysis as above (pretty much copied straight, with changes to the variables) and an additional analysis using the Loughran-McDonald lexicon (also included in the 'tidytext' package)
+
+
+## Loading a dataframe of movie lines
+### Cornell published a corpus of movie dialogue, from which we are going to take dialogue lines from many different movies.  https://www.cs.cornell.edu/~cristian/Cornell_Movie-Dialogs_Corpus.html
+
+### Actually loading in the data was trickier than I'd have thought.  R does not like multi-character deliminators, especially when they're comprised of special regex characters
+```{r}
+
+
+#Reads in the dataframe
+movieraw <- "https://raw.githubusercontent.com//SudharshanShanmugasundaram//Chatbot//master//data//cornell%20movie-dialogs%20corpus//movie_lines.txt"
+
+movielinesall <- as.data.frame(readLines(movieraw))
+movielinesall <- as.data.frame(do.call(rbind, strsplit(as.character(movielinesall$`readLines(movieraw)`)," +++$+++ ",fixed = TRUE)), stringsAsFactors = FALSE)
+
+#Sets column names
+colnames(movielinesall) <- c("LineID", "CharacterID", "MovieID", "Character_Name", "Line_Text")
+
+#Removing "L" from the line number
+
+movielinesall$LineID <- as.numeric(gsub("L","",movielinesall$LineID))
+
+#Changing the data types where nessicary
+
+movielinesall$MovieID <- as.factor(movielinesall$MovieID)
+movielinesall$CharacterID <- as.factor(movielinesall$CharacterID)
+movielinesall$LineID <- as.numeric(movielinesall$LineID)
+
+#Trimming it down a little (optional)
+movielines <- movielinesall
+##movielines <- subset.data.frame(movielinesall, MovieID == c("m284", "m5", "m264", "m595"), select = c(LineID:Line_Text))
+```
+
+
+### Lets look at the positive-negative sentiment across several random movies. 
+```{r}
+#Tidying up the dataset to include words in each line
+tidylines <- movielines %>%
+  unnest_tokens(word, Line_Text)
+rownames(tidylines) <- 1:nrow(tidylines)
+
+#Looking for the count of the joy words in the whole dataset
+tidylines %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE) %>%
+  head()
+
+
+#Changed this to look at sentiment by line
+moviesentiment <- tidylines %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(MovieID, index = LineID %/% 1, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+
+
+#Going to take subset of the movies, for the sake of brevity
+moviesentimentsub <- subset(moviesentiment, MovieID == c("m100", "m103", "m207", "m519"), select = c(MovieID:sentiment))
+
+ggplot(moviesentimentsub, aes(index, sentiment, fill = MovieID)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~MovieID, ncol = 2, scales = "free_x")
+```
+### We can see above how the sentiment changes across dialogue lines for 4 movies that I selected at random.  The scale of the sentiment isn't as large as the textbook example as the size of each chunk of text here corrisponds to one line of dialogue, instead of a bunch of lines like in the books.
+
+
+## Sentiment over time
+### Let's see how sentiment changes throughout a film.  In this case, the movie 'Heathers'
+```{r}
+#We've changed some of the code from the example, but it's mostly just replacing the variables
+
+
+heathers <- tidylines %>% 
+  filter(MovieID == "m383")
+
+afinn <- heathers %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = LineID %/% 1) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+bing_and_nrc <- bind_rows(heathers %>% 
+                            inner_join(get_sentiments("bing")) %>%
+                            mutate(method = "Bing et al."),
+                          heathers %>% 
+                            inner_join(get_sentiments("nrc") %>% 
+                                         filter(sentiment %in% c("positive", 
+                                                                 "negative"))) %>%
+                            mutate(method = "NRC")) %>%
+  count(method, index = LineID %/% 1, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+get_sentiments("nrc") %>% 
+     filter(sentiment %in% c("positive", 
+                             "negative")) %>% 
+  count(sentiment)
+
+get_sentiments("bing") %>% 
+  count(sentiment)
+```
+
+### The sentiment appears fairly similar across the different lexicons, although there are differences.  Note how some of the spikes in sentiment are captured diferently across lexicons.
+
+
+## Word Counts
+### Let's see what words are most frequent across all movies in the dataset
+```{r}
+#We've mostly changed variables again
+
+bing_word_counts <- tidylines %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts %>%
+  head()
+
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+
+
+#The stop-words for movies are probably different than for Jane-Austen.  Maybe more like this
+custom_stop_words <- bind_rows(tibble(word = c("like", "right", "well", "work", "yeah"), 
+                                          lexicon = c("custom")), 
+                               stop_words)
+
+custom_stop_words %>%
+  head()
+```
+### We can see above the most common positive and negative words used across all movies in the dataset.  I suspect some words such as 'like',  'right', 'yeah' and 'well' could be removed, as they are more neutral in the context of modern, spoken dialogue.
+
+
+
+## Wordclouds
+### The above, but in two wordclouds
+```{r}
+#Pretty much no changes here from the example code aside from some variables
+
+tidylines %>%
+  anti_join(stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+
+
+
+tidylines %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+
+
+## Looking into dialogue sentances and characters
+### Again, using the movie 'Heathers'
+```{r}
+#This code is based off of the example, but there are significant changes
+
+#We'll seperate out the sentances of dialog, again for the movie 'Heathers'
+#It's easier in this case to just subset our main dataset 'movielines' than it is to pull a script and break it down
+heatherslines <- as.data.frame(subset(movielines, MovieID == "m383", ))
+
+
+#Changing this to group by character instead of chapter
+heatherschars <- heatherslines %>%
+  group_by(CharacterID) %>%
+  mutate(Character_Dialogue = paste0(Line_Text, collapse = "")) %>%
+  distinct(heatherschars,Character_Dialogue)
+  
+
+#No changes here
+bingnegative <- get_sentiments("bing") %>% 
+  filter(sentiment == "negative")
+
+#Changed this to reflect characters' words instead of chapers in books
+heatherswordcounts <- heathers %>%
+  group_by(CharacterID, Character_Name) %>%
+  summarize(words = n())
+
+
+heathers %>%
+  semi_join(bingnegative) %>%
+  group_by(CharacterID) %>%
+  summarize(negativewords = n()) %>%
+  left_join(heatherswordcounts, by = "CharacterID") %>%
+  mutate(ratio = negativewords/words) %>%
+  arrange(desc(ratio)) %>%
+  ungroup() 
+ 
+
+
+
+```
+### It looks like 'Kurt' is the most negative character in the film, though looking at the dialogue it may be more due to his tendancy to use more explatives than other characters, rather than actual negativity (he's pretty happy about cow-tipping)
+
+
+## Adding an additional lexicon to use for an analysis
+### First, let's try using this dictionary for the Heathers movie in the same was as above, and see if there are any differences
+
+```{r}
+#Nearly the same code from the last chunk
+loughrannegative <- get_sentiments("loughran") %>% 
+  filter(sentiment == "negative")
+
+
+heatherswordcounts <- heathers %>%
+  group_by(CharacterID, Character_Name) %>%
+  summarize(words = n())
+
+
+heathers %>%
+  semi_join(loughrannegative) %>%
+  group_by(CharacterID) %>%
+  summarize(negativewords = n()) %>%
+  left_join(heatherswordcounts, by = "CharacterID") %>%
+  mutate(ratio = negativewords/words) %>%
+  arrange(desc(ratio)) %>%
+  ungroup()
+
+```
+### Turns out there are much fewer negative words in total across all characters, and the negative ranking of the characters also changes.  Interesting difference between the lexicons
+
+## For Giggles
+### Whats are the most litigious movies?
+```{r}
+
+litigiousness <- tidylines %>%
+  inner_join(get_sentiments("loughran")) %>%
+  count(MovieID, index = LineID %/% 1, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  select(MovieID, litigious) %>%
+  group_by(MovieID) %>%
+  summarise(sum = sum(litigious), n = n()) %>%
+  mutate(Litigousness = sum / n) %>%
+  arrange(desc(Litigousness)) %>%
+  ungroup()
+
+ ggplot(head(litigiousness, 5), aes(y = reorder(MovieID, -Litigousness), x = Litigousness,fill = Litigousness)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_discrete(labels = c("Verdict", "The Verdict", "True Believer", "The Usual Suspects", "Romeo and Juliet")) +
+  labs(x = "Litigousness",
+       y = "Movie Title") +
+  coord_flip()
+
+
+  
+```
+
+### It turns out the most litigous movie is one titled "Verdict" (1974), followed closely by "The Verdict" (1982).  Never seem them, but not suprising given the titles.
