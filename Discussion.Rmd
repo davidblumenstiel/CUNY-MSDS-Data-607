@@ -1,0 +1,73 @@
+---
+title: "Discussion 12: Pandora Music Reccomendation System"
+author: "David Blumenstiel"
+date: "4/15/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Overview
+
+Pandora is a music streaming service whose main function is to allow the user to create 'stations' which play similar types of music to a selected artist, song, or style, and allow for further customization.  While users can compile playlists, it’s primary way delivering songs to the user is almost fully reliant on recommendations systems; users are not expected to pick out each song they want to listen to.  However, they do have the ability to 'thumbs up' or down a song, or 'tune' their stations to their liking, giving some additional control over what is recommended.
+
+
+### Scenario Design
+
+To understand their recommendation system, their motives must be outlined:
+
+
+#### Who are the target users?
+
+The target users are likely customers who want to listen to music, are able to stream it (one can download music with Pandora, but isn't great at it), but don't necessarily have specific songs in mind.  They are also people who are either willing to listen to ads along with their music or pay a subscription.  
+
+
+#### What are their key goals?
+
+##### Short take:
+
+Pandora: make the big bucks.
+
+Customers: listen to music they enjoy.
+
+
+##### A bit more in depth:
+
+Pandora grants its users the ability for users to either pay a subscription or listen to ads to access the service.  Combined with the fact that just about everyone likes music, Pandora has a pretty huge demographic to work with.  However, there are a lot of competing music streaming services out there, and I don't know anyone who pays for two.  Pandora's niche is its 'stations' feature is what sets it apart and is ultimately going to be their main selling point.
+
+When it comes to the customers, as mentioned previously, they have plenty of choices when it comes to music services.  These specific customers would, in addition to having access to a large library of music, like to have a system in place to recommend songs they might be interested in.  Otherwise they would go with a different service; many other services are better for downloading music and putting together 'locked in' playlists.
+
+
+#### How can they accomplish their goals?
+
+Pandora needs to have a robust recommendation system in place to deliver songs to their users which they will like, and may not have heard before.  It should consider a user's tastes.  In addition, it should work well hands free, have a nice UI, and generally be an easy and enjoyable service.
+
+For customers to get the most out of Pandora, they need to choose some music they like/want to listen to and use the built-in 'thumbs up'/'thumbs down' functions to further tune their stations.  
+
+
+### Reverse engineering their system.
+
+Luckily, there's already a fair bit of information out there on how they do it.  The discussion below can be considered in reference to:
+
+https://www.theserverside.com/feature/How-Pandora-built-a-better-recommendation-engine
+
+https://towardsdatascience.com/recommender-systems-in-practice-cef9033bb23a
+
+https://www.pandora.com/about/mgp
+
+First thing that needs to happen is transforming music info a more programatic-friendly entity.  To do that, Pandora employs teams of musicians to go through each piece of music and label it with 450 different attributes.  I was honestly kinda surprised when I read that; I would have thought they might have fancy algorithms to do that, but I have not found any evidence of that.  It appears to be done manually.
+
+Once music is in a format a computer can read -in this case it's a vector of 450 attributes for each piece- then the recommendation system can kick in.  Users have a profile associated with them containing information as to what kinds of music they spend time listening to, what they search for, and what they've thumbed-up/down.  It will then compare songs to their profile, and recommend them based on several aspects: The station they are listening to, the attributes of the song, their thumbs-up/downs, and (if it's a public station) the input of similar users.  
+
+As you interact more with the system, it tailors your profile.  The profile and the station appear to be the main factors considered when recommending songs to a user.  It will also account for changes in taste and change over time.
+
+
+### What could be improved?
+
+From my experience, I very much enjoy their recommendation system.  However, if I were them I might (if it doesn't already do this) consider when a song has been skipped.  I rarely use their thumbs-up/down feature, and I doubt many other people who like to listen hands-free do either (especially while driving).
